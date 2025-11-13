@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人任务管理</title>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+  <style type="text/tailwindcss">
+    @theme {
+      --color-primary: #f87171;
+      --color-secondary: #60a5fa;
+      --color-accent: #8b5cf6;
+      --color-light: #f3f4f6;
+      --font-inter: 'Inter', sans-serif;
+    }
+    @utility smooth-transition {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @utility card-shadow {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+  </style>
+</head>
+<body class="font-inter bg-gray-50 h-screen flex">
+  <!-- 侧边栏 -->
+  <aside class="w-64 bg-white card-shadow smooth-transition hidden md:block">
+    <div class="p-5 border-b border-gray-100">
+      <div class="flex items-center gap-3">
+        <img src="https://picsum.photos/id/64/40/40" alt="用户头像" class="w-10 h-10 rounded-full object-cover">
+        <div>
+          <p class="font-semibold">阿聪</p>
+          <p class="text-gray-500 text-sm">个人任务管理</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="p-4">
+      <div class="space-y-1">
+        <button class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-light smooth-transition">
+          <i class="fas fa-plus text-primary"></i>
+          <span>添加任务</span>
+        </button>
+        <button class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-light smooth-transition">
+          <i class="fas fa-search text-gray-500"></i>
+          <span>搜索</span>
+        </button>
+        <button class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-light smooth-transition">
+          <i class="fas fa-inbox text-gray-500"></i>
+          <span>收件箱</span>
+        </button>
+        <button class="flex items-center gap-3 w-full px-3 py-2 rounded-md bg-primary/10 text-primary">
+          <i class="fas fa-calendar-day"></i>
+          <span>今天</span>
+        </button>
+        <button class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-light smooth-transition">
+          <i class="fas fa-calendar-alt text-gray-500"></i>
+          <span>调度</span>
+        </button>
+        <button class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-light smooth-transition">
+          <i class="fas fa-filter text-gray-500"></i>
+          <span>过滤器&标签</span>
+        </button>
+      </div>
+
+      <div class="mt-6">
+        <p class="text-gray-500 text-sm px-3 mb-3">我的项目</p>
+        <div class="space-y-1">
+          <button class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-light smooth-transition">
+            <span class="w-3 h-3 rounded-full bg-primary"></span>
+            <span>健身</span>
+          </button>
+          <button class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-light smooth-transition">
+            <span class="w-3 h-3 rounded-full bg-secondary"></span>
+            <span>房贷</span>
+          </button>
+          <button class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-light smooth-transition">
+            <span class="w-3 h-3 rounded-full bg-accent"></span>
+            <span>约会</span>
+          </button>
+          <button class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-light smooth-transition">
+            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+            <span>全站品牌</span>
+          </button>
+          <button class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-light smooth-transition">
+            <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
+            <span>网站更新</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- 主内容区 -->
+  <main class="flex-1 overflow-auto p-6">
+    <div class="max-w-3xl mx-auto">
+      <h1 class="text-2xl font-bold mb-6">今天</h1>
+
+      <section>
+        <h2 class="text-sm font-semibold text-gray-500 mb-3">我的项目</h2>
+        <div class="space-y-4">
+          <div class="flex items-center gap-3 p-3 bg-white rounded-lg card-shadow smooth-transition hover:shadow-md">
+            <input type="checkbox" class="w-5 h-5 rounded text-primary focus:ring-primary">
+            <div class="flex-1">
+              <h3 class="font-medium">30分钟瑜伽</h3>
+              <p class="text-sm text-gray-500">上午7:30</p>
+            </div>
+            <span class="w-3 h-3 rounded-full bg-primary"></span>
+          </div>
+
+          <div class="flex items-center gap-3 p-3 bg-white rounded-lg card-shadow smooth-transition hover:shadow-md">
+            <input type="checkbox" class="w-5 h-5 rounded text-primary focus:ring-primary">
+            <div class="flex-1">
+              <h3 class="font-medium">开启预约</h3>
+              <p class="text-sm text-gray-500">下午3:00</p>
+            </div>
+            <span class="w-3 h-3 rounded-full bg-secondary"></span>
+          </div>
+
+          <div class="flex items-center gap-3 p-3 bg-white rounded-lg card-shadow smooth-transition hover:shadow-md">
+            <input type="checkbox" class="w-5 h-5 rounded text-primary focus:ring-primary">
+            <div class="flex-1">
+              <h3 class="font-medium">买面包</h3>
+              <p class="text-sm text-gray-500">晚上6:30</p>
+            </div>
+            <span class="w-3 h-3 rounded-full bg-accent"></span>
+          </div>
+        </div>
+
+        <button class="mt-4 flex items-center gap-2 text-primary text-sm hover:underline">
+          <i class="fas fa-plus"></i>
+          <span>添加任务</span>
+        </button>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    // 简单交互：任务勾选状态模拟
+    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        const taskCard = this.closest('div');
+        const taskTitle = taskCard.querySelector('h3');
+        if (this.checked) {
+          taskTitle.classList.add('line-through', 'text-gray-400');
+        } else {
+          taskTitle.classList.remove('line-through', 'text-gray-400');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
