@@ -1,5 +1,6 @@
 
 from datetime import datetime
+import json
 
 from backend.app import db
 
@@ -36,10 +37,12 @@ class Todo(db.Model):
     title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     completed = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     due_date = db.Column(db.DateTime, nullable=True)
     priority = db.Column(db.Integer, default=1)  # 1: 低, 2: 中, 3: 高
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    reminders_sent = db.Column(db.Text, default=json.dumps([]))  # 存储已发送的提醒时间点，如["1h", "15m", "5m"]
 
     def __repr__(self):
         return f"Todo('{self.title}', '{self.completed}')"

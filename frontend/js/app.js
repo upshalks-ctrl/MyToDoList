@@ -1,6 +1,5 @@
 // 全局配置常量
 const API_BASE_URL = '/api';
-const TASK_REMINDER_INTERVAL = 60000; // 1分钟
 const ANIMATION_DURATION = 500; // 动画持续时间（毫秒）
 
 // 全局变量
@@ -12,6 +11,10 @@ let editSelectedTags = [];
 let currentEditingTodo = null;
 let currentView = 'add-task';
 let currentTagId = null;
+
+// 消息提醒相关变量
+let reminderMessages = []; // 存储所有提醒消息
+let unreadCount = 0; // 未读消息数量
 
 // 显示消息提示
 function showMessage(message, type) {
@@ -28,9 +31,32 @@ function showMessage(message, type) {
 document.addEventListener('DOMContentLoaded', async function() {
     await checkAuth();
     setupEventListeners();
-    initReminders(); // 初始化提醒功能
+    setupMessagePanelEventListeners(); // 设置消息面板事件监听器
+    initWebSocket(); // 初始化WebSocket连接以接收实时提醒
     initializeDatePicker(); // 初始化日期选择器
 });
+
+// 设置消息面板事件监听器
+function setupMessagePanelEventListeners() {
+    // 消息通知图标点击事件
+    const notificationIcon = document.getElementById('message-notification');
+    if (notificationIcon) {
+        notificationIcon.addEventListener('click', openMessagePanel);
+    }
+    
+    // 点击页面其他区域关闭消息面板
+    document.addEventListener('click', function(e) {
+        const panel = document.getElementById('message-panel');
+        const notificationIcon = document.getElementById('message-notification');
+        
+        if (panel && panel.classList.contains('show') && 
+            !panel.contains(e.target) && 
+            e.target !== notificationIcon && 
+            !notificationIcon.contains(e.target)) {
+            closeMessagePanel();
+        }
+    });
+}
 
 // 检查用户认证
   async function checkAuth() {
@@ -502,8 +528,13 @@ async function handleTaskSubmit(e) {
     }
     
     const formData = new FormData(e.target);
-    // 处理截止时间：确保datetime-local输入的时间被正确转换为ISO字符串
-    let isoDueDate = dueDate ? dueDate + ':00.000Z' : null;
+    // 处理截止时间：将用户输入的北京时间转换为UTC时间
+    let isoDueDate = null;
+    if (dueDate) {
+        // 用户输入的是本地时间（北京时间），需要转换为UTC时间
+        const localDate = new Date(dueDate + ':00');
+        isoDueDate = localDate.toISOString();
+    }
     
     const taskData = {
         title: formData.get('title').trim(),
@@ -1088,88 +1119,139 @@ async function loadTags() {
     }
 }
 
-// 任务提醒功能
-let reminderModal = null;
+// WebSocket实时提醒功能
+let socket = null;
 
-// 初始化提醒功能
-function initReminders() {
-    // 创建提醒弹窗元素
-    reminderModal = document.createElement('div');
-    reminderModal.className = 'reminder-modal';
-    reminderModal.style.display = 'none';
+// 初始化WebSocket连接
+function initWebSocket() {
+    // 获取当前用户ID
+    const userId = localStorage.getItem('user_id');
+    if (!userId) return;
     
-    reminderModal.innerHTML = `
-        <div class="reminder-header">
-            <h3 class="reminder-title">📅 任务提醒</h3>
-            <button class="reminder-close" onclick="hideReminder()">&times;</button>
-        </div>
-        <div class="reminder-tasks" id="reminder-tasks"></div>
-    `;
-    
-    document.body.appendChild(reminderModal);
-    
-    // 每分钟检查一次即将到期的任务
-    setInterval(checkUpcomingTasks, TASK_REMINDER_INTERVAL);
-    
-    // 立即检查一次
-    checkUpcomingTasks();
-}
-
-// 检查即将到期的任务
-async function checkUpcomingTasks() {
-    const token = localStorage.getItem('access_token');
+    // 根据当前协议选择WebSocket协议（http->ws, https->wss）
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // WebSocket连接到后端服务器（5000端口）
+    const wsUrl = `${protocol}//${window.location.hostname}:5000`;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/todos/upcoming?minutes=60`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+        // 创建WebSocket连接
+        socket = io(wsUrl);
+        
+        // 连接成功后加入用户房间
+        socket.on('connect', () => {
+            console.log('WebSocket连接成功');
+            socket.emit('join_room', userId);
         });
         
-        if (response.ok) {
-            const data = await response.json();
-            const upcomingTasks = data.todos;
-            
-            if (upcomingTasks.length > 0) {
-                showReminder(upcomingTasks);
-            }
-        } else {
-            console.error('获取即将到期任务失败');
-        }
+        // 接收提醒消息
+        socket.on('reminder', (data) => {
+            addReminderMessages(data.tasks);
+        });
+        
+        // 连接断开时重连
+        socket.on('disconnect', () => {
+            console.log('WebSocket连接断开，尝试重连...');
+            setTimeout(initWebSocket, 5000);
+        });
+        
     } catch (error) {
-        console.error('检查即将到期任务时出错:', error);
+        console.error('初始化WebSocket连接失败:', error);
+        // 重连尝试
+        setTimeout(initWebSocket, 5000);
     }
 }
 
-// 显示提醒弹窗
-function showReminder(tasks) {
-    if (!reminderModal) return;
-    
-    const tasksContainer = document.getElementById('reminder-tasks');
-    if (!tasksContainer) return;
-    tasksContainer.innerHTML = '';
-    
+// 添加提醒消息到消息列表
+function addReminderMessages(tasks) {
     tasks.forEach(task => {
-        const taskElement = document.createElement('div');
-        taskElement.className = 'reminder-task';
+        const message = {
+            id: task.id,
+            title: task.title,
+            due_date: task.due_date,
+            received_at: new Date(),
+            read: false
+        };
+        reminderMessages.unshift(message); // 添加到消息列表开头
+        unreadCount++;
+    });
+    
+    updateNotificationCount();
+    renderMessagePanel();
+    
+    // 显示桌面通知（如果浏览器支持）
+    if (Notification.permission === "granted") {
+        tasks.forEach(task => {
+            new Notification('任务即将到期', {
+                body: `任务: ${task.title}\n截止时间: ${new Date(task.due_date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n点击查看详情`
+            });
+        });
+    }
+}
+
+// 更新通知数量显示
+function updateNotificationCount() {
+    const countElement = document.getElementById('notification-count');
+    if (countElement) {
+        countElement.textContent = unreadCount;
+        countElement.style.display = unreadCount > 0 ? 'flex' : 'none';
+    }
+}
+
+// 渲染消息面板
+function renderMessagePanel() {
+    const contentElement = document.getElementById('message-panel-content');
+    if (!contentElement) return;
+    
+    if (reminderMessages.length === 0) {
+        contentElement.innerHTML = '<div class="no-messages">暂无提醒消息</div>';
+        return;
+    }
+    
+    contentElement.innerHTML = '';
+    
+    reminderMessages.forEach(message => {
+        const messageElement = document.createElement('div');
+        messageElement.className = `message-item ${message.read ? '' : 'unread'}`;
+        messageElement.onclick = () => markMessageAsRead(message.id);
         
-        taskElement.innerHTML = `
-            <div class="reminder-task-title">${task.title}</div>
-            <div class="reminder-task-due">
-                截止时间: ${new Date(task.due_date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+        messageElement.innerHTML = `
+            <div class="message-item-title">${message.title}</div>
+            <div class="message-item-due">
+                截止时间: ${new Date(message.due_date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+            </div>
+            <div class="message-item-time">
+                提醒时间: ${message.received_at.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
             </div>
         `;
         
-        tasksContainer.appendChild(taskElement);
+        contentElement.appendChild(messageElement);
     });
-    
-    reminderModal.style.display = 'block';
 }
 
-// 隐藏提醒弹窗
-function hideReminder() {
-    if (reminderModal) {
-        reminderModal.style.display = 'none';
+// 标记消息为已读
+function markMessageAsRead(messageId) {
+    const message = reminderMessages.find(m => m.id === messageId);
+    if (message && !message.read) {
+        message.read = true;
+        unreadCount--;
+        updateNotificationCount();
+        renderMessagePanel();
+    }
+}
+
+// 打开消息面板
+function openMessagePanel() {
+    const panel = document.getElementById('message-panel');
+    if (panel) {
+        panel.classList.add('show');
+    }
+}
+
+// 关闭消息面板
+function closeMessagePanel() {
+    const panel = document.getElementById('message-panel');
+    if (panel) {
+        panel.classList.remove('show');
     }
 }
 
@@ -1232,11 +1314,11 @@ async function handleEditTaskSubmit(event) {
     
     // 注意：这里我们不检查截止时间是否晚于当前时间，因为用户可能需要修改一个已经过期的任务
     
-    // 准备任务数据 - 保持与创建任务相同的时间处理方式
+    // 准备任务数据 - 将用户输入的北京时间转换为UTC时间
     const taskData = {
         title,
         description: description || '',
-        due_date: dueDate + ':00.000Z', // 保持用户选择的时间值，不进行时区转换
+        due_date: dueDate ? new Date(dueDate + ':00').toISOString() : null, // 转换为UTC时间
         priority,
         tags: editSelectedTags
     };

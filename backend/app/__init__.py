@@ -5,6 +5,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
+from flask_socketio import SocketIO
+from flask_migrate import Migrate
 
 from backend.app.config import Config
 
@@ -16,6 +18,10 @@ cors = CORS()
 bcrypt = Bcrypt()
 # 创建JWT实例
 jwt = JWTManager()
+# 创建SocketIO实例
+socketio = SocketIO()
+# 创建Migrate实例
+migrate = Migrate()
 # 前端目录路径
 FRONTEND_DIR = Path(__file__).parent.parent.parent / "frontend"
 def create_app(config_class=Config):
@@ -28,6 +34,10 @@ def create_app(config_class=Config):
     cors.init_app(app, resources={"*": {"origins": "*"}})
     bcrypt.init_app(app)
     jwt.init_app(app)
+    # 初始化SocketIO
+    socketio.init_app(app, cors_allowed_origins="*")
+    # 初始化Migrate
+    migrate.init_app(app, db)
     
     # 添加安全头
     @app.after_request
@@ -53,5 +63,9 @@ def create_app(config_class=Config):
     # 注册蓝图
     from backend.app.api.routes import api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # 导入并初始化提醒服务
+    from backend.app.services.reminder_service import init_reminder_service
+    init_reminder_service(app)
     
     return app

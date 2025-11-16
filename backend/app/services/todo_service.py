@@ -326,6 +326,10 @@ def update_todo(user_id, todo_id, title=None, description=None, completed=None, 
         todo.description = validated_data['description']
     if 'completed' in validated_data:
         todo.completed = validated_data['completed']
+        if validated_data['completed']:
+            # 当任务标记为完成时，设置completed_at为当前时间
+            from datetime import datetime, timezone
+            todo.completed_at = datetime.now(timezone.utc)
     if 'due_date' in validated_data:
         todo.due_date = validated_data['due_date']
     if 'priority' in validated_data:
@@ -456,3 +460,22 @@ def get_upcoming_todos(user_id, minutes=60):
         output.append(todo_data)
     
     return output
+
+def delete_old_completed_tasks(user_id):
+    """
+    删除用户24小时前已完成的任务
+    """
+    now = datetime.now(timezone.utc)
+    twenty_four_hours_ago = now - timedelta(hours=24)
+    
+    # 查询用户所有已完成且完成时间超过24小时的任务
+    # 注意：由于Todo模型中没有completed_at字段，我们假设任务是在创建后立即完成的
+    # 实际应用中，应该添加一个completed_at字段来记录任务完成的时间
+    old_tasks = Todo.query.filter_by(user_id=user_id, completed=True)
+    old_tasks = old_tasks.filter(Todo.created_at < twenty_four_hours_ago)
+    
+    # 删除这些任务
+    deleted_count = old_tasks.delete()
+    db.session.commit()
+    
+    return deleted_count

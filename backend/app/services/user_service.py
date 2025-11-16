@@ -1,6 +1,7 @@
 from backend.app import bcrypt, db
 from backend.app.models.models import User
 from backend.app.schems import UserSchema
+from backend.app.services.todo_service import delete_old_completed_tasks
 from marshmallow import ValidationError
 
 def get_user_by_id(user_id):
@@ -48,5 +49,7 @@ def authenticate_user(username, password):
     """
     user = get_user_by_username(username)
     if user and bcrypt.check_password_hash(user.password, password):
+        # 在用户登录时删除24小时前已完成的任务
+        delete_old_completed_tasks(user.id)
         return user
     return None

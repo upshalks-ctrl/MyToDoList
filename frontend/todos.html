@@ -12,9 +12,27 @@
     <!-- 顶部导航栏 -->
     <div class="top-bar">
         <div class="logo">Todo List</div>
+        <div class="nav-actions">
+            <!-- 消息提醒 -->
+            <div class="message-notification" id="message-notification">
+                <i class="fas fa-bell"></i>
+                <span class="notification-count" id="notification-count">0</span>
+            </div>
+        </div>
         <div class="user-info">
             <span class="user-name" id="user-name">加载中...</span>
             <button id="logout-btn">退出登录</button>
+        </div>
+    </div>
+
+    <!-- 消息面板 -->
+    <div id="message-panel" class="message-panel">
+        <div class="message-panel-header">
+            <h3>任务提醒</h3>
+            <button class="message-panel-close" onclick="closeMessagePanel()">&times;</button>
+        </div>
+        <div class="message-panel-content" id="message-panel-content">
+            <div class="no-messages">暂无提醒消息</div>
         </div>
     </div>
 
@@ -235,6 +253,8 @@
         </div>
     </div>
 
+    <!-- Socket.IO客户端库 -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
