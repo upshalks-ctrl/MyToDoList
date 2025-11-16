@@ -74,29 +74,15 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("tags和todos加载完成");
         } else {
             console.log(`Token验证失败，响应状态码: ${response.status}`);
-            try {
-                const errorData = await response.json();
-                console.log('详细错误数据:', errorData);
-            } catch (e) {
-                console.log('无法解析错误响应体:', e);
-            }
-            
-            console.log("清除无效token");
+
             localStorage.removeItem('access_token');
-            
-            console.log("重定向到登录页");
+
             window.location.href = 'index.html';
         }
     } catch (error) {
         console.error('认证检查过程中发生异常:', error);
-        console.log('异常类型:', error.name);
-        console.log('异常消息:', error.message);
-        console.log('异常堆栈:', error.stack);
-        
-        console.log("清除token");
         localStorage.removeItem('access_token');
-        
-        console.log("重定向到登录页");
+
         window.location.href = 'index.html';
     }
 }
@@ -128,6 +114,9 @@ async function loadTodos() {
 // 渲染标签列表
 function renderTagList() {
     const tagList = document.getElementById('tag-list');
+    if (!tagList) {
+        return;
+    }
     tagList.innerHTML = '';
 
     allTags.forEach(tag => {
@@ -150,6 +139,9 @@ function renderTagList() {
 // 渲染标签选择器
 function renderTagSelector() {
     const tagSelector = document.getElementById('tag-selector');
+    if (!tagSelector) {
+        return;
+    }
     tagSelector.innerHTML = '';
 
     // 渲染现有标签
@@ -236,6 +228,9 @@ function renderEditTagSelector(selectedTagIds = []) {
 // 渲染过滤器标签选项
 function renderFilterTags() {
     const filterTag = document.getElementById('filter-tag');
+    if (!filterTag) {
+        return;
+    }
     filterTag.innerHTML = '<option value="">标签</option>';
 
     allTags.forEach(tag => {
@@ -606,6 +601,9 @@ function showTagView(tag) {
 // 渲染已使用的标签集合
 function renderUsedTags() {
     const usedTagsList = document.getElementById('used-tags-list');
+    if (!usedTagsList) {
+        return;
+    }
     usedTagsList.innerHTML = '';
 
     // 收集所有任务中使用过的标签
@@ -708,6 +706,9 @@ async function renderPreview(startDate = null) {
 // 渲染一周任务日历
 function renderWeekCalendar(week_tasks) {
     const calendarGrid = document.getElementById('calendar-grid');
+    if (!calendarGrid) {
+        return;
+    }
     calendarGrid.innerHTML = '';
     
     // 获取今天的日期字符串，用于标记今天
@@ -892,6 +893,9 @@ function renderTagTasks(tagId) {
 // 渲染任务列表
 function renderTaskList(containerId, todos) {
     const container = document.getElementById(containerId);
+    if (!container) {
+        return;
+    }
     container.innerHTML = '';
 
     if (todos.length === 0) {
@@ -1141,6 +1145,7 @@ function showReminder(tasks) {
     if (!reminderModal) return;
     
     const tasksContainer = document.getElementById('reminder-tasks');
+    if (!tasksContainer) return;
     tasksContainer.innerHTML = '';
     
     tasks.forEach(task => {
