@@ -1,3 +1,8 @@
+// 全局配置常量
+const API_BASE_URL = '/api';
+const TASK_REMINDER_INTERVAL = 60000; // 1分钟
+const ANIMATION_DURATION = 500; // 动画持续时间（毫秒）
+
 // 全局变量
 let currentUser = null;
 let allTodos = [];
@@ -20,41 +25,29 @@ function showMessage(message, type) {
 }
 
 // 页面加载完成后执行
-document.addEventListener('DOMContentLoaded', function() {
-    checkAuth();
+document.addEventListener('DOMContentLoaded', async function() {
+    await checkAuth();
     setupEventListeners();
+    initReminders(); // 初始化提醒功能
+    initializeDatePicker(); // 初始化日期选择器
 });
 
 // 检查用户认证
   async function checkAuth() {
-    console.log("=== checkAuth函数开始执行 ===");
-    console.log(`当前页面: ${window.location.href}`);
-    
     // 从localStorage获取token - 注意：使用与登录页面一致的'access_token'
     const token = localStorage.getItem('access_token');
-    console.log(`localStorage中的access_token: ${token ? '存在' : '不存在'}`);
-    console.log(`token值（前20个字符）: ${token ? token.substring(0, 20) + '...' : '空'}`);
     
     if (!token) {
-        console.log("未找到access_token，重定向到登录页");
         window.location.href = 'index.html';
         return;
     }
 
     try {
-        console.log("发送API请求验证token有效性");
-        console.log("请求URL: /api/user");
-        console.log("Authorization头: Bearer " + (token ? token.substring(0, 20) + "..." : "空"));
-        
-        const response = await fetch('/api/user', {
+        const response = await fetch(`${API_BASE_URL}/user`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
-        
-        console.log(`API响应状态: ${response.status}`);
-        console.log(`API响应状态文本: ${response.statusText}`);
-        console.log('Response headers:', response.headers);
 
         if (response.ok) {
             console.log("Token验证成功，开始解析用户数据");
@@ -91,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
 async function loadTodos() {
     const token = localStorage.getItem('access_token');
     try {
-        const response = await fetch('/api/todos', {
+        const response = await fetch(`${API_BASE_URL}/todos`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -162,6 +155,38 @@ function renderTagSelector() {
         tagOption.addEventListener('click', () => toggleTagSelection(tag.id));
         tagSelector.appendChild(tagOption);
     });
+
+    // 添加自定义标签区域
+    const customTagSection = document.createElement('div');
+    customTagSection.className = 'custom-tag-section';
+    
+    const customTagForm = document.createElement('div');
+    customTagForm.className = 'custom-tag-form';
+    
+    const customTagName = document.createElement('input');
+    customTagName.type = 'text';
+    customTagName.id = 'custom-tag-name';
+    customTagName.placeholder = '自定义标签名称';
+    
+    const customTagColor = document.createElement('input');
+    customTagColor.type = 'color';
+    customTagColor.id = 'custom-tag-color';
+    customTagColor.value = '#3498db';
+    customTagColor.style.border = '1px solid #ddd';
+    customTagColor.style.borderRadius = '4px';
+    customTagColor.style.cursor = 'pointer';
+    
+    const createCustomTagBtn = document.createElement('button');
+    createCustomTagBtn.textContent = '创建';
+    createCustomTagBtn.className = 'btn-create-tag';
+    createCustomTagBtn.addEventListener('click', createCustomTag);
+    
+    customTagForm.appendChild(customTagName);
+    customTagForm.appendChild(customTagColor);
+    customTagForm.appendChild(createCustomTagBtn);
+    
+    customTagSection.appendChild(customTagForm);
+    tagSelector.appendChild(customTagSection);
 }
 
 // 渲染编辑任务弹框中的标签选择器
@@ -249,7 +274,7 @@ async function createCustomTag() {
     
     // 添加空检查，避免元素不存在时出错
     if (!tagNameInput || !tagColorInput) {
-        alert('创建标签失败：表单元素不可用');
+        showMessage('创建标签失败：表单元素不可用', 'error');
         return;
     }
     
@@ -257,12 +282,12 @@ async function createCustomTag() {
     const tagColor = tagColorInput.value;
 
     if (!tagName) {
-        alert('请输入标签名称');
+        showMessage('请输入标签名称', 'error');
         return;
     }
 
     try {
-        const response = await fetch('/api/tags', {
+        const response = await fetch(`${API_BASE_URL}/tags`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -302,50 +327,40 @@ async function createCustomTag() {
             tagColorInput.value = '#3498db';
         } else {
             console.error('创建标签失败');
-            alert('创建标签失败，请重试');
+            showMessage('创建标签失败，请重试', 'error');
         }
     } catch (error) {
         console.error('创建标签时出错:', error);
-        alert('创建标签时出错，请重试');
+        showMessage('创建标签时出错，请重试', 'error');
+    }
+}
+
+// 切换标签选择的通用函数
+function toggleTagSelectionGeneric(tagId, tagArray, containerId) {
+    const index = tagArray.indexOf(tagId);
+    const tagOption = document.querySelector(`#${containerId} .tag-option[data-tag-id="${tagId}"]`);
+    
+    if (index > -1) {
+        tagArray.splice(index, 1);
+        if (tagOption) {
+            tagOption.classList.remove('selected');
+        }
+    } else {
+        tagArray.push(tagId);
+        if (tagOption) {
+            tagOption.classList.add('selected');
+        }
     }
 }
 
 // 切换标签选择
 function toggleTagSelection(tagId) {
-    const index = selectedTags.indexOf(tagId);
-    // 使用更具体的选择器，确保只选中主标签选择器中的标签元素
-    const tagOption = document.querySelector(`#tag-selector .tag-option[data-tag-id="${tagId}"]`);
-    
-    if (index > -1) {
-        selectedTags.splice(index, 1);
-        if (tagOption) {
-            tagOption.classList.remove('selected');
-        }
-    } else {
-        selectedTags.push(tagId);
-        if (tagOption) {
-            tagOption.classList.add('selected');
-        }
-    }
+    toggleTagSelectionGeneric(tagId, selectedTags, 'tag-selector');
 }
 
 // 切换编辑标签选择
 function toggleEditTagSelection(tagId) {
-    const index = editSelectedTags.indexOf(tagId);
-    // 使用更具体的选择器，确保只选中编辑弹框中的标签元素
-    const tagOption = document.querySelector(`#edit-tag-selector .tag-option[data-tag-id="${tagId}"]`);
-    
-    if (index > -1) {
-        editSelectedTags.splice(index, 1);
-        if (tagOption) {
-            tagOption.classList.remove('selected');
-        }
-    } else {
-        editSelectedTags.push(tagId);
-        if (tagOption) {
-            tagOption.classList.add('selected');
-        }
-    }
+    toggleTagSelectionGeneric(tagId, editSelectedTags, 'edit-tag-selector');
 }
 
 // 设置事件监听器
@@ -428,7 +443,7 @@ async function getOrCreateOtherTag() {
         // 创建"其他"标签
         const token = localStorage.getItem('access_token');
         try {
-            const response = await fetch('/api/tags', {
+            const response = await fetch(`${API_BASE_URL}/tags`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -488,16 +503,7 @@ async function handleTaskSubmit(e) {
     
     const formData = new FormData(e.target);
     // 处理截止时间：确保datetime-local输入的时间被正确转换为ISO字符串
-    // 当用户选择时间时，datetime-local返回的是本地时间字符串
-    // 我们需要保持这个时间值，而不是让JavaScript自动转换为UTC
-    let isoDueDate = null;
-    if (dueDate) {
-        // 手动构建ISO字符串，确保时间值与用户选择的一致
-        // 将输入的时间字符串（如2023-12-31T12:00）转换为ISO格式（如2023-12-31T12:00:00.000Z）
-        // 注意：这里我们添加了秒和毫秒，并使用Z表示UTC，但实际上时间值是用户选择的本地时间
-        // 这样可以确保后端收到的时间与用户选择的时间一致
-        isoDueDate = dueDate + ':00.000Z';
-    }
+    let isoDueDate = dueDate ? dueDate + ':00.000Z' : null;
     
     const taskData = {
         title: formData.get('title').trim(),
@@ -508,7 +514,7 @@ async function handleTaskSubmit(e) {
     };
 
     try {
-        const response = await fetch('/api/todos', {
+        const response = await fetch(`${API_BASE_URL}/todos`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -650,7 +656,7 @@ async function updateViews() {
 async function renderTodayTasks() {
     try {
         const token = localStorage.getItem('access_token');
-        const response = await fetch('/api/todos/today', {
+        const response = await fetch(`${API_BASE_URL}/todos/today`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -674,7 +680,7 @@ async function renderTodayTasks() {
 async function renderPreview(startDate = null) {
     try {
         const token = localStorage.getItem('access_token');
-        let url = '/api/todos/week';
+        let url = `${API_BASE_URL}/todos/week`;
         
         // 如果提供了起始日期，添加到URL参数
         if (startDate) {
@@ -790,14 +796,14 @@ async function handleSearch() {
         
         // 如果搜索框为空，获取所有任务，否则执行搜索
         if (searchTerm.trim() === '') {
-            response = await fetch('/api/todos', {
+            response = await fetch(`${API_BASE_URL}/todos`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             });
         } else {
-            response = await fetch(`/api/todos?search=${encodeURIComponent(searchTerm)}`, {
+            response = await fetch(`${API_BASE_URL}/todos?search=${encodeURIComponent(searchTerm)}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -820,19 +826,11 @@ async function handleSearch() {
 
 // 处理过滤器变化
 async function handleFilterChange() {
-    console.log("=== handleFilterChange函数开始执行 ===");
     const completed = document.getElementById('filter-completed').value;
     const priority = document.getElementById('filter-priority').value;
     const tagId = document.getElementById('filter-tag').value;
     const sortBy = document.getElementById('filter-sort-by').value;
     const sortOrder = document.getElementById('filter-sort-order').value;
-
-    console.log("过滤器参数:");
-    console.log("completed:", completed);
-    console.log("priority:", priority);
-    console.log("tagId:", tagId);
-    console.log("sortBy:", sortBy);
-    console.log("sortOrder:", sortOrder);
 
     // 构建查询参数，只添加非空字符串的参数
     const params = new URLSearchParams();
@@ -842,13 +840,10 @@ async function handleFilterChange() {
     if (sortBy && sortBy.trim() !== '') params.append('sort_by', sortBy);
     if (sortOrder && sortOrder.trim() !== '') params.append('sort_order', sortOrder);
 
-    console.log("API请求URL:", `/api/todos?${params.toString()}`);
-
     try {
         const token = localStorage.getItem('access_token');
-        console.log("Authorization头:", `Bearer ${token ? token.substring(0, 20) + '...' : '空'}`);
         
-        const response = await fetch(`/api/todos?${params.toString()}`, {
+        const response = await fetch(`${API_BASE_URL}/todos?${params.toString()}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -860,24 +855,15 @@ async function handleFilterChange() {
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('获取过滤任务失败:', errorText);
             throw new Error('获取过滤任务失败: ' + errorText);
         }
         
         const data = await response.json();
-        console.log("API响应数据:", data);
-        
         const filteredTodos = data.todos;
-        console.log("过滤后的任务数量:", filteredTodos.length);
-        console.log("任务数据:", filteredTodos);
 
         renderTaskList('filtered-tasks', filteredTodos);
-        console.log("任务列表渲染完成");
     } catch (error) {
         console.error('过滤失败:', error);
-        console.error('异常类型:', error.name);
-        console.error('异常消息:', error.message);
-        console.error('异常堆栈:', error.stack);
     }
 }
 
@@ -998,39 +984,53 @@ function editTodo(todo) {
     const modal = document.getElementById('edit-task-modal');
     modal.style.display = 'block';
     
-    // 自动聚焦到标题输入框，解决没有插入符的问题
+    // 立即聚焦到标题输入框
     const titleInput = document.getElementById('edit-task-title');
     titleInput.focus();
+    titleInput.select();
     // 将光标移动到输入框末尾
     titleInput.setSelectionRange(titleInput.value.length, titleInput.value.length);
+    
+    // 确保其他输入框在点击时也能正确获得焦点
+    const inputs = modal.querySelectorAll('input, textarea, select');
+    inputs.forEach(input => {
+        input.addEventListener('click', function() {
+            this.focus();
+        });
+        input.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            this.focus();
+        });
+    });
 }
 
 // 完成任务
 async function completeTodo(todoId, taskElement) {
     const token = localStorage.getItem('access_token');
     try {
-        const response = await fetch(`/api/todos/${todoId}`, {
-            method: 'DELETE',
+        const response = await fetch(`${API_BASE_URL}/todos/${todoId}/toggle`, {
+            method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
 
         if (response.ok) {
-            // 添加滑动动画
-            taskElement.style.transform = 'translateX(-100%)';
-            taskElement.style.opacity = '0';
-            taskElement.style.transition = 'transform 0.5s, opacity 0.5s';
+            // 添加完成动画效果
+            taskElement.style.opacity = '0.5';
+            taskElement.style.textDecoration = 'line-through';
+            taskElement.style.transition = `opacity ${ANIMATION_DURATION}ms, text-decoration ${ANIMATION_DURATION}ms`;
             
             setTimeout(async () => {
                 // 重新加载所有任务并更新所有视图
                 await loadTodos();
-            }, 500);
+            }, ANIMATION_DURATION);
         } else {
-            console.error('完成任务失败');
+            showMessage('标记任务完成失败，请重试', 'error');
         }
     } catch (error) {
-        console.error('完成任务时出错:', error);
+        console.error('标记任务完成时出错:', error);
+        showMessage('标记任务完成时出错，请重试', 'error');
     }
 }
 
@@ -1038,7 +1038,7 @@ async function completeTodo(todoId, taskElement) {
 async function deleteTodo(todoId, taskElement) {
     const token = localStorage.getItem('access_token');
     try {
-        const response = await fetch(`/api/todos/${todoId}`, {
+        const response = await fetch(`${API_BASE_URL}/todos/${todoId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -1049,11 +1049,12 @@ async function deleteTodo(todoId, taskElement) {
             // 添加滑动动画
             taskElement.style.transform = 'translateX(-100%)';
             taskElement.style.opacity = '0';
-            taskElement.style.transition = 'transform 0.5s, opacity 0.5s';
+            taskElement.style.transition = `transform ${ANIMATION_DURATION}ms, opacity ${ANIMATION_DURATION}ms`;
             
             setTimeout(async () => {
+                // 重新加载所有任务并更新所有视图
                 await loadTodos();
-            }, 500);
+            }, ANIMATION_DURATION);
         } else {
             console.error('删除任务失败');
         }
@@ -1067,7 +1068,7 @@ async function deleteTodo(todoId, taskElement) {
 async function loadTags() {
     const token = localStorage.getItem('access_token');
     try {
-        const response = await fetch('/api/tags', {
+        const response = await fetch(`${API_BASE_URL}/tags`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -1108,7 +1109,7 @@ function initReminders() {
     document.body.appendChild(reminderModal);
     
     // 每分钟检查一次即将到期的任务
-    setInterval(checkUpcomingTasks, 60000);
+    setInterval(checkUpcomingTasks, TASK_REMINDER_INTERVAL);
     
     // 立即检查一次
     checkUpcomingTasks();
@@ -1119,7 +1120,7 @@ async function checkUpcomingTasks() {
     const token = localStorage.getItem('access_token');
     
     try {
-        const response = await fetch('/api/todos/upcoming?minutes=60', {
+        const response = await fetch(`${API_BASE_URL}/todos/upcoming?minutes=60`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -1172,14 +1173,7 @@ function hideReminder() {
     }
 }
 
-// 页面加载完成后初始化所有功能
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadTodos();
-    await loadTags();
-    setupEventListeners();
-    initReminders(); // 初始化提醒功能
-    initializeDatePicker(); // 初始化日期选择器
-});
+// 页面加载完成后初始化所有功能 - 已合并到上面的DOMContentLoaded事件监听器中
 
 // 初始化日期选择器
 function initializeDatePicker() {
@@ -1229,7 +1223,6 @@ async function handleEditTaskSubmit(event) {
     }
     
     const dueDateTime = new Date(dueDate);
-    const now = new Date();
     
     // 检查截止时间是否合法
     if (isNaN(dueDateTime.getTime())) {
@@ -1251,7 +1244,7 @@ async function handleEditTaskSubmit(event) {
     const token = localStorage.getItem('access_token');
     
     try {
-        const response = await fetch(`/api/todos/${taskId}`, {
+        const response = await fetch(`${API_BASE_URL}/todos/${taskId}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -1269,11 +1262,21 @@ async function handleEditTaskSubmit(event) {
                 allTodos[todoIndex] = updatedTodo;
             }
             
-            // 更新视图
-            updateViews();
+            // 全面更新所有视图，确保修改后的任务在所有地方都能实时显示
+            await updateViews();
             
-            // 确保主任务列表也被更新
-            renderTaskList('tasks', allTodos);
+            // 重新渲染搜索结果（如果当前在搜索视图）
+            const searchView = document.getElementById('search-view');
+            if (searchView && searchView.style.display !== 'none') {
+                // 直接调用handleSearch函数来更新搜索结果
+                await handleSearch();
+            }
+            
+            // 重新渲染标签视图（如果当前在标签视图）
+            const tagView = document.getElementById('tag-view');
+            if (tagView && tagView.style.display !== 'none' && currentTagId) {
+                await renderTagTasks(currentTagId);
+            }
             
             // 关闭弹框
             closeEditModal();
