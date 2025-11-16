@@ -35,7 +35,7 @@ def create_app(config_class=Config):
         # 防止浏览器对响应的内容类型进行嗅探
         response.headers['X-Content-Type-Options'] = 'nosniff'
         return response
-    # 新增：托管前端页面的路由
+    #托管前端页面的路由
     @app.route('/')
     def index():
         return send_from_directory(FRONTEND_DIR, 'index.html')
@@ -43,8 +43,8 @@ def create_app(config_class=Config):
     @app.route('/todos.html')
     def todos():
         return send_from_directory(FRONTEND_DIR, 'todos.html')
-    
-    # 新增：处理前端静态文件
+
+    #处理前端静态文件
     @app.route('/<path:filename>')
     def static_files(filename):
         return send_from_directory(FRONTEND_DIR, filename)
