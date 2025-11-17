@@ -468,14 +468,24 @@ def delete_old_completed_tasks(user_id):
     now = datetime.now(timezone.utc)
     twenty_four_hours_ago = now - timedelta(hours=24)
     
-    # 查询用户所有已完成且完成时间超过24小时的任务
-    # 注意：由于Todo模型中没有completed_at字段，我们假设任务是在创建后立即完成的
-    # 实际应用中，应该添加一个completed_at字段来记录任务完成的时间
+    # 查询用户所有已完成且创建时间超过24小时的任务
     old_tasks = Todo.query.filter_by(user_id=user_id, completed=True)
     old_tasks = old_tasks.filter(Todo.created_at < twenty_four_hours_ago)
     
-    # 删除这些任务
-    deleted_count = old_tasks.delete()
+    # 获取所有要删除的任务ID
+    old_task_ids = [task.id for task in old_tasks.all()]
+    
+    # 如果没有要删除的任务，直接返回0
+    if not old_task_ids:
+        return 0
+    
+    # 先删除中间表中的关联记录
+    from backend.app.models.models import todo_tags
+    db.session.execute(todo_tags.delete().where(todo_tags.c.todo_id.in_(old_task_ids)))
+    
+    # 然后删除任务
+    deleted_count = Todo.query.filter(Todo.id.in_(old_task_ids)).delete()
+    
     db.session.commit()
     
     return deleted_count

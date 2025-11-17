@@ -529,17 +529,10 @@ async function handleTaskSubmit(e) {
     
     const formData = new FormData(e.target);
     // 处理截止时间：将用户输入的北京时间转换为UTC时间
-    let isoDueDate = null;
-    if (dueDate) {
-        // 用户输入的是本地时间（北京时间），需要转换为UTC时间
-        const localDate = new Date(dueDate + ':00');
-        isoDueDate = localDate.toISOString();
-    }
-    
     const taskData = {
         title: formData.get('title').trim(),
         description: formData.get('description').trim(),
-        due_date: isoDueDate,
+        due_date: dueDate ? convertBeijingTimeToUTC(dueDate) : null,
         priority: parseInt(formData.get('priority')),
         tags: tags
     };
@@ -949,7 +942,7 @@ function renderTaskList(containerId, todos) {
                 </div>
                 ${todo.description ? `<div class="task-description">${todo.description}</div>` : ''}
                 <div class="task-meta">
-                    ${todo.due_date ? `<div class="task-due-date"><i class="fas fa-calendar-alt"></i> ${new Date(todo.due_date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</div>` : ''}
+                    ${todo.due_date ? `<div class="task-due-date"><i class="fas fa-calendar-alt"></i> ${new Date(todo.due_date+'Z').toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</div>` : ''}
                     <div class="task-priority ${priorityClass}">
                         ${todo.priority === 1 ? '低' : todo.priority === 2 ? '中' : '高'}优先级
                     </div>
@@ -1183,7 +1176,7 @@ function addReminderMessages(tasks) {
     if (Notification.permission === "granted") {
         tasks.forEach(task => {
             new Notification('任务即将到期', {
-                body: `任务: ${task.title}\n截止时间: ${new Date(task.due_date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n点击查看详情`
+                body: `任务: ${task.title}\n截止时间: ${new Date(task.due_date +'Z').toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n点击查看详情`
             });
         });
     }
@@ -1218,10 +1211,10 @@ function renderMessagePanel() {
         messageElement.innerHTML = `
             <div class="message-item-title">${message.title}</div>
             <div class="message-item-due">
-                截止时间: ${new Date(message.due_date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+                截止时间: ${new Date(message.due_date +'Z').toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
             </div>
             <div class="message-item-time">
-                提醒时间: ${message.received_at.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+                提醒时间: ${new Date(message.received_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
             </div>
         `;
         
@@ -1251,6 +1244,25 @@ function markMessageAsRead(messageId) {
     }
 }
 
+// 将北京时间转换为UTC时间
+function convertBeijingTimeToUTC(beijingTimeStr) {
+    // beijingTimeStr格式：YYYY-MM-DDTHH:MM（来自datetime-local输入）
+    // 注意：datetime-local输入会将用户选择的时间转换为浏览器本地时区
+    // 我们需要明确将其视为北京时间（UTC+8）进行处理
+    
+    // 解析日期和时间部分
+    const [datePart, timePart] = beijingTimeStr.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+    
+    // 创建一个UTC时间对象，手动计算UTC时间
+    // 北京时间 = UTC时间 + 8小时，所以UTC时间 = 北京时间 - 8小时
+    const utcDate = new Date(Date.UTC(year, month - 1, day, hours - 8, minutes));
+    
+    // 转换为UTC时间的ISO字符串
+    return utcDate.toISOString();
+}
+
 // 显示任务详情模态框
 function showTaskDetail(task) {
     // 获取模态框元素
@@ -1266,7 +1278,7 @@ function showTaskDetail(task) {
     document.getElementById('detail-description').textContent = task.description || '';
     
     // 格式化日期时间
-    const dueDate = task.due_date ? new Date(task.due_date).toLocaleString('zh-CN', { 
+    const dueDate = task.due_date ? new Date(task.due_date +'Z').toLocaleString('zh-CN', {
         year: 'numeric', 
         month: '2-digit', 
         day: '2-digit',
@@ -1423,7 +1435,7 @@ async function handleEditTaskSubmit(event) {
     const taskData = {
         title,
         description: description || '',
-        due_date: dueDate ? new Date(dueDate + ':00').toISOString() : null, // 转换为UTC时间
+        due_date: dueDate ? convertBeijingTimeToUTC(dueDate) : null,
         priority,
         tags: editSelectedTags
     };
