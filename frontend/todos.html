@@ -36,6 +36,42 @@
         </div>
     </div>
 
+    <!-- 任务详情模态框 -->
+    <div id="task-detail-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>任务详情</h3>
+                <button class="modal-close" onclick="closeTaskDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="task-detail-item">
+                    <label>任务标题:</label>
+                    <p id="detail-title"></p>
+                </div>
+                <div class="task-detail-item">
+                    <label>任务描述:</label>
+                    <p id="detail-description"></p>
+                </div>
+                <div class="task-detail-item">
+                    <label>截止时间:</label>
+                    <p id="detail-due-date"></p>
+                </div>
+                <div class="task-detail-item">
+                    <label>优先级:</label>
+                    <p id="detail-priority"></p>
+                </div>
+                <div class="task-detail-item">
+                    <label>创建时间:</label>
+                    <p id="detail-created-at"></p>
+                </div>
+                <div class="task-detail-item">
+                    <label>标签:</label>
+                    <div id="task-detail-tags"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 主内容区域 -->
     <div class="main-content">
         <!-- 左侧导航栏 -->

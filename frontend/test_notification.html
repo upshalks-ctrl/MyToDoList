@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试消息通知点击功能</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <div class="top-bar">
+        <div class="logo">Todo List</div>
+        <div class="nav-actions">
+            <!-- 消息提醒 -->
+            <div class="message-notification" id="message-notification">
+                <i class="fas fa-bell"></i>
+                <span class="notification-count" id="notification-count">0</span>
+            </div>
+        </div>
+        <div class="user-info">
+            <span class="user-name" id="user-name">测试用户</span>
+        </div>
+    </div>
+
+    <!-- 消息面板 -->
+    <div id="message-panel" class="message-panel">
+        <div class="message-panel-header">
+            <h3>任务提醒</h3>
+            <button class="message-panel-close" onclick="closeMessagePanel()">&times;</button>
+        </div>
+        <div class="message-panel-content" id="message-panel-content">
+            <div class="no-messages">暂无提醒消息</div>
+        </div>
+    </div>
+
+    <!-- 任务详情模态框 -->
+    <div id="task-detail-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>任务详情</h3>
+                <button class="modal-close" onclick="closeTaskDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="task-detail-item">
+                    <label>任务标题:</label>
+                    <p id="detail-title"></p>
+                </div>
+                <div class="task-detail-item">
+                    <label>任务描述:</label>
+                    <p id="detail-description"></p>
+                </div>
+                <div class="task-detail-item">
+                    <label>截止时间:</label>
+                    <p id="detail-due-date"></p>
+                </div>
+                <div class="task-detail-item">
+                    <label>优先级:</label>
+                    <p id="detail-priority"></p>
+                </div>
+                <div class="task-detail-item">
+                    <label>创建时间:</label>
+                    <p id="detail-created-at"></p>
+                </div>
+                <div class="task-detail-item">
+                    <label>标签:</label>
+                    <div id="task-detail-tags"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 测试区域 -->
+    <div style="text-align: center; margin-top: 50px;">
+        <h2>测试消息通知点击功能</h2>
+        <button onclick="addTestReminder()" style="padding: 10px 20px; font-size: 16px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            添加测试任务提醒
+        </button>
+        <p style="margin-top: 20px; color: #666;">点击上面的按钮添加测试任务提醒，然后点击右上角的铃铛图标查看消息，再点击消息查看任务详情。</p>
+    </div>
+
+    <!-- JavaScript代码 -->
+    <script>
+        // 模拟全局变量
+        const allTodos = [];
+        const reminderMessages = [];
+        let unreadCount = 0;
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 点击消息通知打开消息面板
+            const notificationBtn = document.getElementById('message-notification');
+            if (notificationBtn) {
+                notificationBtn.addEventListener('click', toggleMessagePanel);
+            }
+
+            // 点击页面其他地方关闭消息面板
+            document.addEventListener('click', function(event) {
+                const panel = document.getElementById('message-panel');
+                const btn = document.getElementById('message-notification');
+                if (panel && !panel.contains(event.target) && !btn.contains(event.target)) {
+                    closeMessagePanel();
+                }
+            });
+
+            // 关闭按钮点击事件
+            const closeBtn = document.querySelector('#task-detail-modal .modal-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeTaskDetailModal);
+            }
+            
+            // 点击模态框外部关闭模态框
+            const modal = document.getElementById('task-detail-modal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        closeTaskDetailModal();
+                    }
+                });
+            }
+            
+            // ESC键关闭模态框
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeTaskDetailModal();
+                }
+            });
+        });
+
+        // 添加测试任务提醒
+        function addTestReminder() {
+            // 创建测试任务
+            const testTask = {
+                id: 123,
+                title: '测试任务标题',
+                description: '这是一个测试任务的详细描述，用于测试消息通知点击功能。',
+                due_date: new Date(Date.now() + 3600000).toISOString(), // 1小时后
+                priority: 3,
+                created_at: new Date().toISOString(),
+                tags: [
+                    { id: 1, name: '工作', color: '#4CAF50' },
+                    { id: 2, name: '重要', color: '#FF5722' }
+                ]
+            };
+
+            // 添加到任务列表
+            allTodos.push(testTask);
+
+            // 创建测试消息
+            const message = {
+                id: `reminder-${Date.now()}-${testTask.id}`,
+                task_id: testTask.id,
+                title: testTask.title,
+                due_date: testTask.due_date,
+                received_at: new Date(),
+                read: false
+            };
+
+            // 添加到消息列表
+            reminderMessages.unshift(message);
+            unreadCount++;
+
+            // 更新通知数量和消息面板
+            updateNotificationCount();
+            renderMessagePanel();
+
+            alert('测试任务提醒已添加！请点击右上角的铃铛图标查看消息。');
+        }
+
+        // 切换消息面板显示/隐藏
+        function toggleMessagePanel() {
+            const panel = document.getElementById('message-panel');
+            if (panel) {
+                panel.classList.toggle('show');
+            }
+        }
+
+        // 关闭消息面板
+        function closeMessagePanel() {
+            const panel = document.getElementById('message-panel');
+            if (panel) {
+                panel.classList.remove('show');
+            }
+        }
+
+        // 更新通知数量
+        function updateNotificationCount() {
+            const countElement = document.getElementById('notification-count');
+            if (countElement) {
+                countElement.textContent = unreadCount;
+                countElement.style.display = unreadCount > 0 ? 'inline-block' : 'none';
+            }
+        }
+
+        // 渲染消息面板
+        function renderMessagePanel() {
+            const contentElement = document.getElementById('message-panel-content');
+            if (!contentElement) return;
+            
+            if (reminderMessages.length === 0) {
+                contentElement.innerHTML = '<div class="no-messages">暂无提醒消息</div>';
+                return;
+            }
+            
+            contentElement.innerHTML = '';
+            
+            reminderMessages.forEach(message => {
+                const messageElement = document.createElement('div');
+                messageElement.className = `message-item ${message.read ? '' : 'unread'}`;
+                messageElement.onclick = () => markMessageAsRead(message.id);
+                
+                messageElement.innerHTML = `
+                    <div class="message-item-title">${message.title}</div>
+                    <div class="message-item-due">
+                        截止时间: ${new Date(message.due_date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+                    </div>
+                    <div class="message-item-time">
+                        提醒时间: ${message.received_at.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+                    </div>
+                `;
+                
+                contentElement.appendChild(messageElement);
+            });
+        }
+
+        // 标记消息为已读
+        function markMessageAsRead(messageId) {
+            const message = reminderMessages.find(m => m.id === messageId);
+            if (message) {
+                // 查找对应的任务
+                const task = allTodos.find(t => t.id === message.task_id);
+                
+                if (task) {
+                    showTaskDetail(task);
+                } else {
+                    console.error('未找到对应的任务:', message.task_id);
+                }
+                
+                if (!message.read) {
+                    message.read = true;
+                    unreadCount--;
+                    updateNotificationCount();
+                    renderMessagePanel();
+                }
+            }
+        }
+
+        // 显示任务详情
+        function showTaskDetail(task) {
+            // 获取模态框元素
+            const modal = document.getElementById('task-detail-modal');
+            
+            if (!modal) {
+                console.error('未找到任务详情模态框元素');
+                return;
+            }
+            
+            // 填充任务详情
+            document.getElementById('detail-title').textContent = task.title || '无标题';
+            document.getElementById('detail-description').textContent = task.description || '';
+            
+            // 格式化日期时间
+            const dueDate = task.due_date ? new Date(task.due_date).toLocaleString('zh-CN', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit',
+                hour: '2-digit', 
+                minute: '2-digit',
+                timeZone: 'Asia/Shanghai'
+            }) : '';
+            document.getElementById('detail-due-date').textContent = dueDate;
+            
+            // 设置优先级文本
+            const priorityMap = {
+                1: '低',
+                2: '中',
+                3: '高'
+            };
+            document.getElementById('detail-priority').textContent = priorityMap[task.priority] || '无';
+            
+            // 格式化创建时间
+            const createdAt = task.created_at ? new Date(task.created_at).toLocaleString('zh-CN', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit',
+                hour: '2-digit', 
+                minute: '2-digit',
+                timeZone: 'Asia/Shanghai'
+            }) : '';
+            document.getElementById('detail-created-at').textContent = createdAt;
+            
+            // 显示标签
+            const tagsElement = document.getElementById('task-detail-tags');
+            tagsElement.innerHTML = '';
+            
+            if (task.tags && task.tags.length > 0) {
+                task.tags.forEach(tag => {
+                    const tagSpan = document.createElement('span');
+                    tagSpan.className = 'tag-badge';
+                    tagSpan.innerHTML = `<div class="tag-color" style="background-color: ${tag.color};"></div>${tag.name}`;
+                    tagsElement.appendChild(tagSpan);
+                });
+            } else {
+                tagsElement.textContent = '无标签';
+                tagsElement.style.color = '#999';
+                tagsElement.style.fontStyle = 'italic';
+            }
+            
+            // 显示模态框
+            modal.classList.add('show');
+        }
+
+        // 关闭任务详情模态框
+        function closeTaskDetailModal() {
+            const modal = document.getElementById('task-detail-modal');
+            if (modal) {
+                modal.classList.remove('show');
+            }
+        }
+    </script>
+</body>
+</html>

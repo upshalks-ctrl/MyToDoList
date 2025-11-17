@@ -1165,7 +1165,8 @@ function initWebSocket() {
 function addReminderMessages(tasks) {
     tasks.forEach(task => {
         const message = {
-            id: task.id,
+            id: `reminder-${Date.now()}-${task.id}`, // 使用唯一ID避免与任务ID冲突
+            task_id: task.id, // 存储任务ID用于查看详情
             title: task.title,
             due_date: task.due_date,
             received_at: new Date(),
@@ -1231,13 +1232,117 @@ function renderMessagePanel() {
 // 标记消息为已读
 function markMessageAsRead(messageId) {
     const message = reminderMessages.find(m => m.id === messageId);
-    if (message && !message.read) {
-        message.read = true;
-        unreadCount--;
-        updateNotificationCount();
-        renderMessagePanel();
+    if (message) {
+        // 查找对应的任务
+        const task = allTodos.find(t => t.id === message.task_id);
+        
+        if (task) {
+            showTaskDetail(task);
+        } else {
+            console.error('未找到对应的任务:', message.task_id);
+        }
+        
+        if (!message.read) {
+            message.read = true;
+            unreadCount--;
+            updateNotificationCount();
+            renderMessagePanel();
+        }
     }
 }
+
+// 显示任务详情模态框
+function showTaskDetail(task) {
+    // 获取模态框元素
+    const modal = document.getElementById('task-detail-modal');
+    
+    if (!modal) {
+        console.error('未找到任务详情模态框元素');
+        return;
+    }
+    
+    // 填充任务详情
+    document.getElementById('detail-title').textContent = task.title || '无标题';
+    document.getElementById('detail-description').textContent = task.description || '';
+    
+    // 格式化日期时间
+    const dueDate = task.due_date ? new Date(task.due_date).toLocaleString('zh-CN', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Shanghai'
+    }) : '';
+    document.getElementById('detail-due-date').textContent = dueDate;
+    
+    document.getElementById('detail-priority').textContent = task.priority || '无';
+    
+    // 格式化创建时间
+    const createdAt = task.created_at ? new Date(task.created_at).toLocaleString('zh-CN', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Shanghai'
+    }) : '';
+    document.getElementById('detail-created-at').textContent = createdAt;
+    
+    // 显示标签
+    const tagsElement = document.getElementById('task-detail-tags');
+    tagsElement.innerHTML = '';
+    
+    if (task.tags && task.tags.length > 0) {
+        task.tags.forEach(tag => {
+            const tagSpan = document.createElement('span');
+            tagSpan.className = 'tag-badge';
+            tagSpan.innerHTML = `<div class="tag-color" style="background-color: ${tag.color};"></div>${tag.name}`;
+            tagsElement.appendChild(tagSpan);
+        });
+    } else {
+        tagsElement.textContent = '无标签';
+        tagsElement.style.color = '#999';
+        tagsElement.style.fontStyle = 'italic';
+    }
+    
+    // 显示模态框
+    modal.classList.add('show');
+}
+
+// 关闭任务详情模态框
+function closeTaskDetailModal() {
+    const modal = document.getElementById('task-detail-modal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+// 添加任务详情模态框事件监听器
+document.addEventListener('DOMContentLoaded', function() {
+    // 关闭按钮点击事件
+    const closeBtn = document.querySelector('#task-detail-modal .modal-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeTaskDetailModal);
+    }
+    
+    // 点击模态框外部关闭模态框
+    const modal = document.getElementById('task-detail-modal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeTaskDetailModal();
+            }
+        });
+    }
+    
+    // 按下ESC键关闭模态框
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeTaskDetailModal();
+        }
+    });
+});
 
 // 打开消息面板
 function openMessagePanel() {
