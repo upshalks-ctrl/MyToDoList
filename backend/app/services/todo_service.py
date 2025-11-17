@@ -3,6 +3,7 @@ from backend.app import db
 from backend.app.models.models import Todo, Tag
 from backend.app.schems import TodoSchema, TodoUpdateSchema
 from marshmallow import ValidationError
+from sqlalchemy import func
 
 def get_todos(user_id, completed=None, tag_id=None, priority=None, due_date=None, search=None, sort_by=None, sort_order=None):
     """
@@ -94,12 +95,20 @@ def get_today_todos(user_id):
     """
     获取用户今天的待办事项
     """
-    # 获取今天的日期
-    today = datetime.now(timezone.utc).date()
+    # 获取当前UTC时间
+    now_utc = datetime.now(timezone.utc)
+    # 转换为北京时间（UTC+8）
+    now_cst = now_utc.astimezone(timezone(timedelta(hours=8)))
+    # 获取今天的日期（北京时间）
+    today = now_cst.date()
     
     # 构建查询
     query = Todo.query.filter_by(user_id=user_id)
-    query = query.filter(db.func.date(Todo.due_date) == today)
+    query = query.filter(
+        db.func.date(
+            func.CONVERT_TZ(Todo.due_date,'UTC','Asia/Shanghai')
+        ) == today
+    )
     query = query.order_by(Todo.due_date.asc())  # 按时间顺序排序
     
     todos = query.all()
@@ -127,16 +136,19 @@ def get_week_todos(user_id):
     """
     获取用户本周的待办事项
     """
-    # 获取今天的日期
-    today = datetime.now(timezone.utc).date()
-    # 计算本周一和下周一的日期
+    # 获取当前UTC时间并转换为北京时间
+    now_utc = datetime.now(timezone.utc)
+    now_cst = now_utc.astimezone(timezone(timedelta(hours=8)))
+    # 获取今天的日期（北京时间）
+    today = now_cst.date()
+    # 计算本周一和下周一的日期（北京时间）
     monday = today - timedelta(days=today.weekday())
     next_monday = monday + timedelta(days=7)
     
-    # 构建查询
+    # 构建查询，使用北京时间进行日期比较 - 使用SQLAlchemy的datetime函数进行时区转换
     query = Todo.query.filter_by(user_id=user_id)
-    query = query.filter(db.func.date(Todo.due_date) >= monday)
-    query = query.filter(db.func.date(Todo.due_date) < next_monday)
+    query = query.filter(db.func.date(db.func.datetime(Todo.due_date, '+8 hours')) >= monday)
+    query = query.filter(db.func.date(db.func.datetime(Todo.due_date, '+8 hours')) < next_monday)
     query = query.order_by(Todo.due_date.asc())  # 按时间顺序排序
     
     todos = query.all()
@@ -168,32 +180,42 @@ def get_todos_preview(user_id, start_date_param=None):
     """
     获取一周任务预览数据，按日期分组
     """
-    # 获取起始日期，如果没有提供则使用今天
+    # 获取当前UTC时间并转换为北京时间
+    now_utc = datetime.now(timezone.utc)
+    now_cst = now_utc.astimezone(timezone(timedelta(hours=8)))
+    
+    # 获取起始日期，如果没有提供则使用今天（北京时间）
     if start_date_param:
         try:
             # 解析起始日期参数
             start_date = datetime.strptime(start_date_param, '%Y-%m-%d').date()
         except ValueError:
-            # 如果日期格式错误，使用今天
-            start_date = datetime.now(timezone.utc).date()
+            # 如果日期格式错误，使用今天（北京时间）
+            start_date = now_cst.date()
     else:
-        start_date = datetime.now(timezone.utc).date()
+        start_date = now_cst.date()
     
     # 统计数据
     total_tasks = Todo.query.filter_by(user_id=user_id).count()
     completed_tasks = Todo.query.filter_by(user_id=user_id, completed=True).count()
     pending_tasks = Todo.query.filter_by(user_id=user_id, completed=False).count()
-    today_tasks = Todo.query.filter_by(user_id=user_id).filter(db.func.date(Todo.due_date) == datetime.now(timezone.utc).date()).count()
+    today_cst = now_cst.date()
+    today_tasks = (Todo.query.filter_by(user_id=user_id)
+                   .filter(db.func.date(func.CONVERT_TZ(Todo.due_date, 'UTC', 'Asia/Shanghai')) == today_cst).count())
     
     # 获取指定起始日期后的7天任务数据
     week_tasks = []
     for i in range(7):
         date = start_date + timedelta(days=i)
         
-        # 查询当天到期的任务
+        # 查询当天到期的任务 - 使用SQLAlchemy的datetime函数进行时区转换
         tasks = Todo.query.filter_by(user_id=user_id)
-        tasks = tasks.filter(db.func.date(Todo.due_date) == date)
-        tasks = tasks.order_by(Todo.due_date.asc()).all()
+        tasks = tasks.filter(
+            func.DATE(
+                func.CONVERT_TZ(Todo.due_date, 'UTC', 'Asia/Shanghai')  # MySQL 时区转换
+            ) == today_cst
+        )
+        tasks = tasks.order_by(func.CONVERT_TZ(Todo.due_date, 'UTC', 'Asia/Shanghai').asc()).all()
         
         # 转换为响应格式
         task_list = []
@@ -377,7 +399,7 @@ def get_overdue_todos(user_id):
     """
     获取过期的待办事项
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)  # 保持使用UTC时间进行比较
     
     query = Todo.query.filter_by(user_id=user_id, completed=False)
     query = query.filter(Todo.due_date < now)
@@ -433,7 +455,7 @@ def get_upcoming_todos(user_id, minutes=60):
     """
     获取即将到期的待办事项（默认60分钟内）
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)  # 保持使用UTC时间进行比较
     upcoming = now + timedelta(minutes=minutes)
     
     query = Todo.query.filter_by(user_id=user_id, completed=False)

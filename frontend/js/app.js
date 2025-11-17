@@ -60,8 +60,8 @@ function setupMessagePanelEventListeners() {
 
 // 检查用户认证
   async function checkAuth() {
-    // 从localStorage获取token - 注意：使用与登录页面一致的'access_token'
-    const token = localStorage.getItem('access_token');
+    // 从sessionStorage获取token - 注意：使用与登录页面一致的'access_token'
+    const token = sessionStorage.getItem('access_token');
     
     if (!token) {
         window.location.href = 'index.html';
@@ -94,13 +94,13 @@ function setupMessagePanelEventListeners() {
         } else {
             console.log(`Token验证失败，响应状态码: ${response.status}`);
 
-            localStorage.removeItem('access_token');
+            sessionStorage.removeItem('access_token');
 
             window.location.href = 'index.html';
         }
     } catch (error) {
         console.error('认证检查过程中发生异常:', error);
-        localStorage.removeItem('access_token');
+        sessionStorage.removeItem('access_token');
 
         window.location.href = 'index.html';
     }
@@ -108,7 +108,7 @@ function setupMessagePanelEventListeners() {
 
 // 加载所有任务
 async function loadTodos() {
-    const token = localStorage.getItem('access_token');
+    const token = sessionStorage.getItem('access_token');
     try {
         const response = await fetch(`${API_BASE_URL}/todos`, {
             headers: {
@@ -1090,7 +1090,7 @@ async function deleteTodo(todoId, taskElement) {
 
 // 加载所有标签
 async function loadTags() {
-    const token = localStorage.getItem('access_token');
+    const token = sessionStorage.getItem('access_token');
     try {
         const response = await fetch(`${API_BASE_URL}/tags`, {
             headers: {
@@ -1118,13 +1118,13 @@ let socket = null;
 // 初始化WebSocket连接
 function initWebSocket() {
     // 获取当前用户ID
-    const userId = localStorage.getItem('user_id');
+    const userId = sessionStorage.getItem('user_id');
     if (!userId) return;
     
     // 根据当前协议选择WebSocket协议（http->ws, https->wss）
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // WebSocket连接到后端服务器（5000端口）
-    const wsUrl = `${protocol}//${window.location.hostname}:5000`;
+    // WebSocket连接到后端服务器（5001端口）
+    const wsUrl = `${protocol}//${window.location.hostname}:5001`;
     
     try {
         // 创建WebSocket连接

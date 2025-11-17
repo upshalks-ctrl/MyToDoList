@@ -242,9 +242,9 @@
             .then(data => {
                 console.log('Login data:', data);
                 if (data.access_token) {
-                    // 保存token和用户信息到localStorage
-                    localStorage.setItem('access_token', data.access_token);
-                    localStorage.setItem('user_id', data.user_id);
+                    // 保存token和用户信息到sessionStorage（改为sessionStorage以实现标签页隔离）
+                    sessionStorage.setItem('access_token', data.access_token);
+                    sessionStorage.setItem('user_id', data.user_id);
                     console.log('Token saved:', data.access_token);
                     // 跳转到todo页面
                     console.log('Redirecting to todos.html');
